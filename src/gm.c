@@ -412,7 +412,7 @@ __private void print_list(mirror_s* mirrors, const char* where, unsigned max){
 		fprintf(out, " %u", mirrors[i].total);
 		fprintf(out, " %f", mirrors[i].speed);
 		fprintf(out, " %f\n", mirrors[i].stability);
-		fprintf(out, "Server=%s/$repo/os/$arch\n", mirrors[i].url);
+		fprintf(out, "Server=%s/$repo/$arch\n", mirrors[i].url);
 	}
 	if( strcmp(dwhere, "stdout") ) fclose(out);
 }

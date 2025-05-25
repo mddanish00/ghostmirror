@@ -6,6 +6,7 @@
 
 #include <archive.h>
 #include <zlib.h>
+#include <zstd.h>
 
 static z_stream* strm;
 
@@ -20,40 +21,130 @@ void gzip_init(unsigned maxthr){
 void* gzip_decompress(void* data){
 	const unsigned tid = omp_get_thread_num();
 	size_t datasize = mem_header(data)->len;
-	size_t framesize = datasize * 2;
+	size_t framesize = datasize * 2; // Initial estimate
 	void* dec = MANY(char, framesize);
+	mem_header(dec)->len = 0; // Initialize current decompressed size
 	
-	strm[tid].avail_in  = datasize;
-	strm[tid].next_in   = (Bytef*)data;
-	strm[tid].avail_out = framesize;
-	strm[tid].next_out  = (Bytef*)dec;
+	strm.avail_in  = datasize;
+	strm.next_in   = (Bytef*)data;
 	
 	int ret;
 	do{
-		if( (ret=inflate(&strm[tid], Z_NO_FLUSH)) != Z_OK && ret != Z_STREAM_END ){
+		// Prepare output buffer for this iteration
+		strm.avail_out = mem_available(dec);
+		strm.next_out  = (Bytef*)mem_addressing(dec, mem_header(dec)->len);
+
+		ret = inflate(&strm, Z_NO_FLUSH);
+		
+		// Update how much was decompressed in this iteration
+		size_t decompressed_this_iteration = mem_available(dec) - strm.avail_out;
+		mem_header(dec)->len += decompressed_this_iteration;
+
+		if( ret != Z_OK && ret != Z_STREAM_END ){
 			switch( ret ){
 				case Z_DATA_ERROR:
 					errno = EBADMSG;
 				break;
 				default:
-					errno = EINVAL;
+					errno = EINVAL; // Generic error
 				break;
 			}
 			mem_free(dec);
-			dbg_error("decompression failed %d: %s", ret, zError(ret));
+			dbg_error("gzip decompression failed %d: %s", ret, zError(ret));
 			return NULL;
 		}
-		mem_header(dec)->len += framesize - strm[tid].avail_out;
-		if (strm[tid].avail_out == 0) {
-			dec = mem_upsize(dec, framesize);
-			framesize = mem_available(dec);
-			strm[tid].avail_out = framesize;
+		
+		if (strm.avail_out == 0 && ret != Z_STREAM_END) { // Output buffer full, need to resize
+			// Double the current capacity, or add a significant chunk
+			size_t current_capacity = mem_header(dec)->len + mem_available(dec);
+			size_t new_capacity = current_capacity * 2; 
+			// Ensure new_capacity is larger, especially if current_capacity was 0 (though MANY should prevent this)
+			if (new_capacity <= current_capacity) new_capacity = current_capacity + framesize;
+
+
+			dec = mem_upsize(dec, new_capacity - current_capacity); // mem_upsize adds to current_capacity
+			// framesize here is just a chunk size hint for upsize, could be ZSTD_DStreamOutSize() too
 		}
-		strm[tid].next_out  = (Bytef*)(mem_addressing(dec, mem_header(dec)->len));
 	}while( ret != Z_STREAM_END );
 	
 	//inflateEnd(&strm[tid]);
 	inflateReset(&strm[tid]);
+	return dec;
+}
+
+void* zstd_decompress(void* data) {
+	ZSTD_DStream* dstream = ZSTD_createDStream();
+	if (!dstream) {
+		errno = ENOMEM; // Or some other appropriate error
+		dbg_error("Failed to create ZSTD_DStream");
+		return NULL;
+	}
+
+	size_t init_ret = ZSTD_initDStream(dstream);
+	if (ZSTD_isError(init_ret)) {
+		ZSTD_freeDStream(dstream);
+		errno = EINVAL; // Or map ZSTD error code
+		dbg_error("ZSTD_initDStream error: %s", ZSTD_getErrorName(init_ret));
+		return NULL;
+	}
+
+	size_t datasize = mem_header(data)->len;
+	ZSTD_inBuffer input = { data, datasize, 0 };
+
+	// Initial output buffer size
+	// Using ZSTD_DStreamOutSize() as recommended for streaming.
+	size_t out_buffer_size = ZSTD_DStreamOutSize();
+	void* dec = MANY(char, out_buffer_size);
+	if (!dec) { // Should not happen if MANY dies on error, but good practice
+		ZSTD_freeDStream(dstream);
+		errno = ENOMEM;
+		dbg_error("Failed to allocate initial memory for ZSTD decompression");
+		return NULL;
+	}
+	mem_header(dec)->len = 0; // No data decompressed yet
+
+	size_t zstd_ret;
+	do {
+		ZSTD_outBuffer output = { mem_addressing(dec, mem_header(dec)->len), mem_available(dec), 0 };
+
+		zstd_ret = ZSTD_decompressStream(dstream, &output, &input);
+
+		if (ZSTD_isError(zstd_ret)) {
+			ZSTD_freeDStream(dstream);
+			mem_free(dec);
+			// Map ZSTD error codes to errno more specifically if possible
+			if (ZSTD_getErrorCode(zstd_ret) == ZSTD_error_prefix_unknown) {
+				errno = EBADMSG; // Data error seems appropriate
+			} else {
+				errno = EINVAL; // Generic error for other ZSTD issues
+			}
+			dbg_error("ZSTD_decompressStream error: %s", ZSTD_getErrorName(zstd_ret));
+			return NULL;
+		}
+
+		mem_header(dec)->len += output.pos;
+
+		// If output buffer is full and ZSTD_decompressStream hints there might be more data (ret > 0),
+		// or if not all input is consumed yet.
+		if (output.pos == output.size && (zstd_ret > 0 || input.pos < input.size)) {
+			// Upsize the buffer. Add another ZSTD_DStreamOutSize() chunk.
+			// mem_upsize expects the additional size, not the new total size.
+			dec = mem_upsize(dec, ZSTD_DStreamOutSize()); 
+			if (!dec) { // Should not happen if mem_upsize dies on error
+				ZSTD_freeDStream(dstream);
+				// Original dec was freed by mem_upsize on failure, if it works that way,
+				// otherwise, we might need to free it here. Assuming mem_upsize handles it.
+				errno = ENOMEM;
+				dbg_error("Failed to upsize memory for ZSTD decompression");
+				return NULL; // Critical error
+			}
+		}
+	} while (zstd_ret > 0 || input.pos < input.size); 
+	// Loop continues if ZSTD_decompressStream returns > 0 (meaning more frames to decompress or data to flush)
+	// or if there's still input data that hasn't been processed.
+	// Loop terminates when ZSTD_decompressStream returns 0 (all input consumed and flushed).
+
+	ZSTD_freeDStream(dstream);
 	return dec;
 }
 
@@ -280,20 +371,3 @@ void tar_close(tar_s* tar){
 int tar_errno(tar_s* tar){
 	return tar->err;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

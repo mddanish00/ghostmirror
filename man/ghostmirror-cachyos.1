@@ -1,12 +1,12 @@
-.\" Manpage for ghostmirror\&.
+.\" Manpage for ghostmirror-cachyos\&.
 .\" Contact vbextreme to correct errors or typos\&.
-.TH man 1 ":CURRENT_DATE:" ":CURRENT_VERSION:" "ghostmirror man page"
+.TH man 1 "31 May 2025" "0\&.12\&.1" "ghostmirror-cachyos man page"
 .SH NAME
-ghostmirror \- rank pacman mirrors
+ghostmirror-cachyos \- rank pacman mirrors
 .SH SYNOPSIS
-\fIghostmirror\fR [options] <values>
+\fIghostmirror-cachyos\fR [options] <values>
 .SH DESCRIPTION
-\fIghostmirror\fR compares mirror databases with the local database and provides a detailed report on the status of mirror packages. It identifies whether the mirrors are more or less up-to-date compared to the local database, displaying errors or the names of packages that are outdated\&. 
+\fIghostmirror-cachyos\fR compares mirror databases with the local database and provides a detailed report on the status of mirror packages. It identifies whether the mirrors are more or less up-to-date compared to the local database, displaying errors or the names of packages that are outdated\&. 
 
 Custom sorting mode allows generation of a prioritized mirror list tailored to user requirements\&.  For users who prefer automation, adding a single command-line argument enables automatic activation of the systemd service, managing
 mirrors without manual intervention\&. 
@@ -21,7 +21,7 @@ select arch, default \fI'x86_64'\fR
 .PP
 \fB\-m, \-\-mirrorfile\fR
 .RS 4
-use a mirror file instead of downloading the mirrorlist, without \fB-m\fR and \fB-u\fR ghostmirror download mirrorlist and search in all mirror\&.
+use a mirror file instead of downloading the mirrorlist, without \fB-m\fR and \fB-u\fR ghostmirror-cachyos download mirrorlist and search in all mirror\&.
 you can use \fB-m\fR /etc/pacman\&.d/mirrorlist\&.pacnew if you want provide a local mirrolist\&.
 .RE
 .PP
@@ -38,7 +38,7 @@ show all possibile countries
 .PP
 \fB\-u, \-\-uncommented\fR
 .RS 4
-use only uncommented mirrors, by default ghostmirror use commented and uncommented mirrors\&.
+use only uncommented mirrors, by default ghostmirror-cachyos use commented and uncommented mirrors\&.
 This option can be used in combination with the \fB-m\fR option to provide a local mirrorlist \fB-mu\fR /etc/pacman\&.d/mirrorlist\&.
 .RE
 .PP
@@ -103,7 +103,7 @@ sort result for any of fields display in table, multiple fields are allowed\&.
 .PP
 \fB\-l, \-\-list\fR
 .RS 4
-specify a path where ghostmirror will save the new mirrorlist\&.
+specify a path where ghostmirror-cachyos will save the new mirrorlist\&.
 special files like /dev/stdout, can be used to print the mirrolist to the stdout\&.
 .RE
 .PP
@@ -144,8 +144,8 @@ _
 .RS 4
 auto manage systemd\&.timer\&.
 using this option will also enable login lingering if not already enabled\&.
-ghostmirror will automatically create ghostmirror\&.service and ghostmirror\&.timer
-the config\&.service start ghostmirror in the same mode you have executed it, with only differences that need -l\&.
+ghostmirror-cachyos will automatically create ghostmirror-cachyos\&.service and ghostmirror-cachyos\&.timer
+the config\&.service start ghostmirror-cachyos in the same mode you have executed it, with only differences that need -l\&.
 for example if you execute: -DmuldsS 16 light extimated,speed
 the service will always start with 16 parallel downloads, speed light and extimated,speed sort\&.
 for change that you can simple repeat a command\&.
@@ -180,7 +180,7 @@ first of all you need to search a good quantity of mirrors\&.
 .IP
 .nf
 \f[C]
-$ \fIghostmirror\fR -PoclLS Italy,Germany,France \&./mirrorlist\&.new 30 state,outofdate,morerecent,ping
+$ \fIghostmirror-cachyos\fR -PoclLS Italy,Germany,France \&./mirrorlist\&.new 30 state,outofdate,morerecent,ping
 \f[R]
 .fi
 .PP
@@ -195,7 +195,7 @@ While the first step will be performed only once or rarely, this step will be th
 .IP
 .nf
 \f[C]
-$ \fIghostmirror\fR -PmuolsS  \&./mirrorlist\&.new \&./mirrorlist\&.new light state,outofdate,morerecent,extimated,speed
+$ \fIghostmirror-cachyos\fR -PmuolsS  \&./mirrorlist\&.new \&./mirrorlist\&.new light state,outofdate,morerecent,extimated,speed
 \f[R]
 .fi
 .PP
@@ -204,7 +204,7 @@ The following command analyzes mirrors for the selected country (Italy) using 16
 .IP  
 .nf  
 \f[C]  
-$ \fIghostmirror\fR -Pc Italy -t 16 -s light -S morerecent,outofdate,speed  
+$ \fIghostmirror-cachyos\fR -Pc Italy -t 16 -s light -S morerecent,outofdate,speed  
 \f[R]  
 .fi  
 .PP  
@@ -216,4 +216,3 @@ rankmirrors(8) reflector(1)
 No known bugs\&.
 .SH AUTHOR
 vbextreme - https://github\&.com/vbextreme/ghostmirror
-

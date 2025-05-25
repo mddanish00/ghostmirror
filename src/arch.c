@@ -34,7 +34,7 @@ __private unsigned SORTMODE[SORT_MAX];
 __private unsigned SORTCOUNT;
 
 
-char* REPO[2] = { "core", "extra" };
+char* REPO[1] = { "cachyos" };
 
 __private mirror_s* mirror_ctor(mirror_s* mirror, char* url, const char* arch, char* country){
 	memset(mirror, 0, sizeof(mirror_s));
@@ -396,28 +396,32 @@ int pkgname_cmp(const void* a, const void* b){
 }
 
 __private void* get_tar_zst(mirror_s* mirror, const char* repo, const unsigned tos){
-	if( mirror->url[0] == '/' ){
-		__free char* url = str_printf("%s/%s.db", mirror->url, repo);
-		return load_file(url, 1);
-	}
-	else{
-		__free char* url = str_printf("%s/%s/os/%s/%s.db", mirror->url, repo, mirror->arch, repo);
-		void* ret = NULL;
-		if( !mirror->wwwerror ){
-			ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, &mirror->proxy, &mirror->retry);
-		}
-		else{
-			ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, NULL, NULL);
-		}
-		
-		if( mirror->proxy && strcmp(url, mirror->proxy) ) mirror->isproxy = 1;
-		
-		if( !ret ){
-			dbg_error("set error: %u", www_errno());
-			mirror->wwwerror = www_errno();
-		}
-		return ret;
-	}
+    if( mirror->url[0] == '/' ){ // Handling for local file paths (e.g., /path/to/repo)
+        // Assuming 'repo' is the direct name of the .db file, or part of path
+        // This part might need review if local file structure is different from URL structure
+        __free char* url = str_printf("%s/%s.db.tar.zst", mirror->url, repo); 
+        return load_file(url, 1);
+    }
+    else{
+        // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name>/<repo_name>.db.tar.zst
+        // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/cachyos.db.tar.zst
+        __free char* url = str_printf("%s/%s/%s/%s.db.tar.zst", mirror->url, mirror->arch, repo, repo);
+        void* ret = NULL;
+        if( !mirror->wwwerror ){
+            ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, &mirror->proxy, &mirror->retry);
+        }
+        else{ // If wwwerror is already set (e.g. from a previous failed attempt with this mirror)
+            ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, NULL, NULL);
+        }
+        
+        if( mirror->proxy && strcmp(url, mirror->proxy) ) mirror->isproxy = 1;
+        
+        if( !ret ){
+            dbg_error("Failed to download %s, error: %u", url, www_errno()); // Log full URL
+            mirror->wwwerror = www_errno();
+        }
+        return ret;
+    }
 }
 
 __private void mirror_update(mirror_s* mirror, const unsigned tos){
@@ -438,17 +442,16 @@ __private void mirror_update(mirror_s* mirror, const unsigned tos){
 		}
 		//bench[ir][0] = time_cpu_us() - bench[ir][0];
 	
-		//bench[ir][1] = time_cpu_us();
-		__free void* tarbuf = gzip_decompress(tarzstd);
+		__free void* tarbuf = zstd_decompress(tarzstd);
 		if( !tarbuf ){
-			dbg_error("decompress zstd archive from mirror: %s", mirror->url);
+			dbg_error("decompress zstd archive failed for mirror: %s", mirror->url);
 			mirror->status = MIRROR_ERR;
 			switch( errno ){
-				case EBADMSG:
-					mirror->error  = ERROR_GZIP_DATA;
+				case EBADMSG: // ZSTD_error_data_error often results in EBADMSG
+					mirror->error  = ERROR_ZSTD_DATA;
 				break;
 				default:
-					mirror->error  = ERROR_GZIP;
+					mirror->error  = ERROR_ZSTD;
 				break;
 			}
 			return;
@@ -457,6 +460,9 @@ __private void mirror_update(mirror_s* mirror, const unsigned tos){
 	
 		//bench[ir][2] = time_cpu_us();
 		if( !(mirror->repo[ir].db = generate_db(tarbuf)) ){
+			// ERROR_TAR_NOBLOCK, ERROR_TAR_BLOCKEND etc are presumably defined elsewhere
+			// and are relevant to tar extraction, not zstd decompression itself.
+			// This block seems correct as is for tar errors.
 			switch( errno ){
 				case ENOENT : mirror->error = ERROR_TAR_NOBLOCK; break;
 				case EBADF  : mirror->error = ERROR_TAR_BLOCKEND; break;  
@@ -504,7 +510,7 @@ void database_local(mirror_s* local, const char* arch){
 
 char* mirror_loading(const char* fname, const unsigned tos){
 	char* buf = fname ? load_file(fname, 1) :  www_download_retry(MIRROR_LIST_URL, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, NULL, NULL);
-	if( !buf ) die("unable to load mirrorlist");
+	if( !buf ) die("unable to load mirrorlist from %s", MIRROR_LIST_URL);
 	buf = mem_nullterm(buf);
 	return buf;
 }
@@ -792,30 +798,91 @@ void mirrors_sort(mirror_s* mirrors){
 	mem_qsort(mirrors, sort_cmp);
 }
 
-__private void mirror_speed(mirror_s* mirror, const char* arch){
-	mforeach(mirror->repo[1].speed, it){
-		pkgdesc_s* pk = &mirror->repo[1].speed[it];
-		__free char* url = str_printf("%s/extra/os/%s/%s", mirror->url, arch, pk->filename);
-		unsigned retry = DOWNLOAD_RETRY;
-		delay_t  retrytime = DOWNLOAD_WAIT;
-		while( retry-->0 ){
-			double start = time_sec();
-			__free void* buf = www_download(url, 0, 0, NULL);
-			double stop  = time_sec();
-			if( !buf ){
-				++mirror->retry;
-				if( retry ){
-					delay_ms(retrytime);
-					retrytime *= 2;
-				}
-				continue;
-			}
-			unsigned size = mem_header(buf)->len;
-			mirror->speed += (size / (1024.0*1024.0)) / (stop-start);
-			break;
-		}
-	}
-	mirror->speed /= (double)mem_header(mirror->repo[1].speed)->len;
+__private void mirror_speed(mirror_s* mirror, const char* arch, unsigned type){
+    static char* testname[]= {
+        SPEED_LIGHT,
+        SPEED_NORMAL,
+        SPEED_HEAVY
+    };
+
+    // Ensure speed is initialized, especially if it's additive over multiple calls (though it seems per-mirror)
+    mirror->speed = 0.0; 
+    unsigned successful_downloads = 0;
+
+    for( unsigned i = 0; i < type+1; ++i ){
+        pkgdesc_s find;
+        strcpy(find.name, testname[i]);
+
+        // mirror->repo[0].db refers to the 'cachyos' repository database
+        dbg_info("Speed test [%s]: Searching for package '%s'", mirror->url, testname[i]);
+        pkgdesc_s* pk = mem_bsearch(mirror->repo[0].db, &find, pkgname_cmp); 
+        if( !pk ){
+            dbg_warning("Speed test [%s]: Package '%s' NOT FOUND in its database (repo '%s').", mirror->url, testname[i], REPO[0]);
+            continue; // Skip this package if not found, try next
+        }
+        dbg_info("Speed test [%s]: Found package '%s', filename '%s'", mirror->url, testname[i], pk->filename);
+
+        // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name_dir>/<package_filename>
+        // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/yay-12.3.5-1-x86_64.pkg.tar.zst
+        __free char* url = str_printf("%s/%s/cachyos/%s", mirror->url, arch, pk->filename);
+        dbg_info("Speed test [%s]: Attempting to download test package '%s' from URL: %s", mirror->url, testname[i], url);
+        unsigned retry = DOWNLOAD_RETRY;
+        delay_t retrytime = DOWNLOAD_WAIT;
+        
+        void* buf = NULL;
+        while( retry-->0 ){
+            double start = time_sec();
+            buf = www_download(url, 0, 0, NULL); // Assuming www_download handles freeing its internal buffers if retrying
+            double stop  = time_sec();
+
+            if (buf) {
+                dbg_info("Speed test [%s]: Download attempt #%u for '%s' SUCCEEDED. Size: %u bytes. Start: %.9f, Stop: %.9f", mirror->url, DOWNLOAD_RETRY - retry, url, mem_header(buf)->len, start, stop);
+            } else {
+                dbg_info("Speed test [%s]: Download attempt #%u for '%s' FAILED (buf is NULL). Retries left: %u", mirror->url, DOWNLOAD_RETRY - retry, url, retry);
+            }
+
+            if( !buf ){
+                ++mirror->retry; // This increments total retries for the mirror, might be too broad here
+                dbg_warning("Failed to download speed test package %s (attempt %u)", url, DOWNLOAD_RETRY - retry);
+                if( retry ){
+                    delay_ms(retrytime);
+                    retrytime *= 2;
+                }
+            } else { // This 'else' means buf is not NULL, so download was successful
+                unsigned size = mem_header(buf)->len;
+                double time_delta = stop - start;
+
+                if (time_delta > 0) {
+                     mirror->speed += (size / (1024.0*1024.0)) / time_delta;
+                     successful_downloads++;
+                } else if (size > 0) { 
+                     // Download succeeded (buf is not NULL), size is positive, but time_delta is <= 0.
+                     // This can happen with very fast downloads and/or low timer resolution.
+                     dbg_warning("Speed test for %s downloaded %u bytes but time_delta is %.9f (start: %.9f, stop: %.9f). Assuming very high speed by using a minimal time delta.", url, size, time_delta, start, stop);
+                     double min_effective_time = 0.000001; // 1 microsecond
+                     mirror->speed += (size / (1024.0*1024.0)) / min_effective_time;
+                     successful_downloads++;
+                } else {
+                    // This case (size is 0 for a successful download) should be rare.
+                    dbg_warning("Speed test for %s successfully downloaded 0 bytes. Not counted in speed average.", url);
+                    // Do not increment successful_downloads here as 0 byte file gives no speed info.
+                }
+                mem_free(buf); // Free downloaded buffer
+                break; // Success, exit retry loop
+            }
+        }
+        if (!buf) { // If all retries failed for this package
+            dbg_error("All retries failed for speed test package %s", url);
+        }
+    }
+
+    if (successful_downloads > 0) {
+        mirror->speed /= successful_downloads; // Average speed over successfully downloaded packages
+        dbg_info("Speed test [%s]: Final average speed: %.2f MB/s over %u successful downloads", mirror->url, mirror->speed, successful_downloads);
+    } else {
+        mirror->speed = 0.0; // Set to 0 if no packages could be downloaded for speed test
+        dbg_warning("Speed test [%s]: No packages successfully downloaded or all had issues. Final speed set to 0.0.", mirror->url);
+    }
 }
 
 void mirrors_speed(mirror_s* mirrors, const char* arch, int progress){

@@ -1,16 +1,16 @@
-ghostmirror v0.12.1
+ghostmirror-catchyos v0.12.1
 ==================
 Introduction:
 =============
 We've all experienced moments when there seemed to be no packages to update, only to realize days later that the issue was an out-of-sync mirror.<br>
-Despite the numerous tools available on Arch Linux for managing mirrors, none of them fully met my expectations.<br>
+Despite the numerous tools available on CachyOS (and Arch Linux based systems) for managing mirrors, none of them fully met my expectations.<br>
 So, I set out to solve this problem.<br>
-While writing the software, I realized that by continuously adding features, ghostmirror has become a great tool for the mirror maintainers themselves.<br>
+While writing the software, I realized that by continuously adding features, ghostmirror-cachyos has become a great tool for the mirror maintainers themselves.<br>
 In fact, besides displaying mirrors that have errors, it can investigate and show the possible causes that generated the error.
 
 Description:
 ============
-What does GhostMirror do?<br>
+What does ghostmirror-cachyos do?<br>
 It compares the mirror databases with the local database and provides a detailed description of whether the mirror's packages are more or less up-to-date compared to our local database.<br>
 It can analyze the mirrors and display in-depth errors or the names of packages that are not updated.<br>
 Thanks to the custom sorting mode, it can create a list of mirrors based on each user's needs.<br>
@@ -22,7 +22,7 @@ Install:
 ========
 You can use your favorite AUR helper to install it.
 ```bash
-$ yay -S ghostmirror
+$ yay -S ghostmirror-cachyos
 ```
 otherwise you can find PKGBUILD in distro dir
 ```bash
@@ -42,7 +42,7 @@ in the first step you need to search a good quantity of mirrors.<br>
 -L max numbers of output mirror in list<br>
 -S sort mode, first add state, in this mode remove error mirror, after you can add outofdate, in this mode display first the mirror sync, can also add morerecent to ensure you never go out of sync, and at the end, you can add ping to try to prioritize the closest ones.
 ```bash
-$ ghostmirror -PoclLS Italy,Germany,France ./mirrorlist.new 30 state,outofdate,morerecent,ping
+$ ghostmirror-cachyos -PoclLS Italy,Germany,France ./mirrorlist.new 30 state,outofdate,morerecent,ping
 ```
 ### Second step
 Now, instead of taking the mirrors from the global list, we will better evaluate the mirrors found in the first step.<br>
@@ -52,7 +52,7 @@ While the first step will be performed only once or rarely, this step will be th
 -s for apply a real test for mirror speed<br>
 -S change a sort mode, remove ping, add extimated for get more stable mirror and speed for reorder speed
 ```bash
-$ ghostmirror -PmuolsS  ./mirrorlist.new ./mirrorlist.new light state,outofdate,morerecent,extimated,speed
+$ ghostmirror-cachyos -PmuolsS  ./mirrorlist.new ./mirrorlist.new light state,outofdate,morerecent,extimated,speed
 ```
 ### Last step
 now you save your old mirrorlist
@@ -69,36 +69,33 @@ In this mode, you will perform the second step automatically.
 ### Prepare
 you need manual make dir for a new location of mirrorlist, need location where user can edit this without root privilege
 ```bash
-$ mkdir ~/.config/ghostmirror
+$ mkdir ~/.config/ghostmirror-cachyos
 ```
 now you need to inform pacman where you have stored mirrorlist<br>
 edit file /etc/pacman.conf, search and replace this line and change <username> with your username.
 ```
-[core]
-Include = /home/<username>/.config/ghostmirror/mirrorlist
-
-[extra]
-Include = /home/<username>/.config/ghostmirror/mirrorlist
+[cachyos]
+Include = /home/<username>/.config/ghostmirror-cachyos/mirrorlist
 ```
 ### First step
 same manually mode you need create a big good mirrorlist
 ```bash
-$ ghostmirror -PoclLS Italy,Germany,France ~/.config/ghostmirror/mirrorlist 30 state,outofdate,morerecent,ping
+$ ghostmirror-cachyos -PoclLS Italy,Germany,France ~/.config/ghostmirror-cachyos/mirrorlist 30 state,outofdate,morerecent,ping
 ```
 ### Last step
-the arguments,lsS, you pass to ghostmirror at this point it's saved for auto reuse it in service.<br>
-so, the only difference with manually second step is -D option, this enable ghostmirror.timer and loginctl linger<br>
+the arguments,lsS, you pass to ghostmirror-cachyos at this point it's saved for auto reuse it in service.<br>
+so, the only difference with manually second step is -D option, this enable ghostmirror-cachyos.timer and loginctl linger<br>
 ```bash
-$ ghostmirror -PoDumlsS  ~/.config/ghostmirror/mirrorlist ~/.config/ghostmirror/mirrorlist light state,outofdate,morerecent,extimated,speed
+$ ghostmirror-cachyos -PoDumlsS  ~/.config/ghostmirror-cachyos/mirrorlist ~/.config/ghostmirror-cachyos/mirrorlist light state,outofdate,morerecent,extimated,speed
 ```
 ### Use of systemd
 show the timer
 ```bash
 $ systemctl --user list-timers
 ```
-force start ghostmirror before timer ellapsed
+force start ghostmirror-cachyos before timer ellapsed
 ```bash
-$ systemctl --user start ghostmirror.service
+$ systemctl --user start ghostmirror-cachyos.service
 ```
 
 ### End
@@ -125,7 +122,7 @@ accept short option with - or multiple option, followed by value
 ### -a --arch <required string>
 select arch, default 'x86_64'
 ### -m --mirrorfile <required string>
-use mirror file instead of downloading mirrorlist, without -m and -u ghostmirror download mirrorlist and search in all mirror.<br>
+use mirror file instead of downloading mirrorlist, without -m and -u ghostmirror-cachyos download mirrorlist and search in all mirror.<br>
 you can use -m /etc/pacman.d/mirrorlist.pacnew if you not want downloading mirrorlist but used local list.<br>
 ### -c --country <required string>
 select country from mirrorlist.<br>
@@ -174,8 +171,8 @@ all: same passing -i error,outofdate
 ### -D --systemd <not required argument>
 auto manager systemd.timer.<br>
 when you pass this option the software activate login linger if not ebabled.<br>
-auto create ghostmirror.service and ghostmirror.timer<br>
-the config.service start ghostmirror in the same mode you haved executed it, with only differences that need -l.<br>
+auto create ghostmirror-cachyos.service and ghostmirror-cachyos.timer<br>
+the config.service start ghostmirror-cachyos in the same mode you haved executed it, with only differences that need -l.<br>
 for exaples if you execute: -DmuldsS <mirrorlist> <mirrorlist> 16 light extimated,speed<br>
 the service is always start with <mirrorlist> 16 parallel downloads, speed light and extimated,speed sort.<br>
 for change you can simple repeat a command.<br>
@@ -226,7 +223,7 @@ State:
 * v0.10.3 investigate: add check internet connection, fix investigate not display all mirror, add ability do display investigate when all mirrors fail. fix retry is not updated
 * v0.10.2 removed sync field, is not portable and not have very good information, add more performance, change default timeout to 8s
 * v0.10.1 permanently removed the use of local database. with systemd if it fails for 5 attempts it will stop and try again the following day
-* v0.10.0 from issue 6, ghostmirror required the first mirror to be working in order to have a database similar to the one on your PC in order to perform the comparison. Given the developments this is no longer necessary and an alternative mirror will now be sought
+* v0.10.0 from issue 6, ghostmirror-cachyos required the first mirror to be working in order to have a database similar to the one on your PC in order to perform the comparison. Given the developments this is no longer necessary and an alternative mirror will now be sought
 * v0.9.22 fix path_explode ..
 * v0.9.21 fix pkgbuild update after git, fix man documentation
 * v0.9.20 bash completion(request 4), fix environment(issue 5)

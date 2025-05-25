@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CWD="$(dirname "$0")"
-OUTPUT_FILE="${CWD}/ghostmirror.1"
+OUTPUT_FILE="${CWD}/ghostmirror-cachyos.1"
 
 # read from environment if set otherwise use a default value
 CURRENT_VERSION="${CURRENT_VERSION:='0.9.19'}"

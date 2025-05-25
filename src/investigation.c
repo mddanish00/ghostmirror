@@ -57,6 +57,8 @@ __private void investigate_mirror(mirror_s* mirror, __unused mirror_s* local, un
 			case ERROR_TAR_BLOCKEND : puts("  error: tar aspected end block but not finding, probably connection interrupt download or corrupted file"); break;
 			case ERROR_TAR_CHECKSUM : puts("  error: fail tar checksum, probably corrupted file"); break;
 			case ERROR_TAR_KV_ASSIGN: puts("  error: fail tar pax kv, probably corrupted file"); break;
+			case ERROR_ZSTD_DATA    : puts("  error: Zstandard data error (corrupted archive?)"); break;
+			case ERROR_ZSTD         : puts("  error: Zstandard decompression error"); break;
 			default: die("internal error, unmanaged %u error, please report this", mirror->error); break;
 		}
 		
