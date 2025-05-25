@@ -1,6 +1,6 @@
 # http://fahdshariff.blogspot.com/2011/04/writing-your-own-bash-completion.html
 
-_ghostmirror_catchyos_completion() {
+_ghostmirror_cachyos_completion() {
 
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	local prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -85,9 +85,9 @@ _ghostmirror_catchyos_completion() {
 	case $cur in
 
 		-*)
-				# ghostmirror-catchyos -h|awk '/^-/{ print $1, $2 }'
-				# ghostmirror-catchyos -h|awk '/^-[a-zA-Z]{1}\s+--/{ print $2 }'
-				LONG_OPTS=$(ghostmirror-catchyos -h|awk '/^-[a-zA-Z]{1}\s+--/{ print $2 }')
+				# ghostmirror-cachyos -h|awk '/^-/{ print $1, $2 }'
+				# ghostmirror-cachyos -h|awk '/^-[a-zA-Z]{1}\s+--/{ print $2 }'
+				LONG_OPTS=$(ghostmirror-cachyos -h|awk '/^-[a-zA-Z]{1}\s+--/{ print $2 }')
 				COMPREPLY=( $(compgen -W "${LONG_OPTS[*]}" -- "${cur}") )
 				return 0
 			;;
@@ -96,5 +96,5 @@ _ghostmirror_catchyos_completion() {
 	return 0
 }
 
-complete -F _ghostmirror_catchyos_completion ghostmirror-catchyos
+complete -F _ghostmirror_cachyos_completion ghostmirror-cachyos
 # ex: filetype=bash

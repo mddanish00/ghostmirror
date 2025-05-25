@@ -1,6 +1,6 @@
 # Maintainer: Vbextreme <@>
 # Contributor: Vbextreme <@>
-prj='ghostmirror-catchyos'
+prj='ghostmirror-cachyos'
 pkgname=($prj)
 pkgdesc='mirror ranking tool for CachyOS, checks status, speed, and more.'
 pkgver='0.10.4'
