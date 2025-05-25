@@ -319,7 +319,7 @@ void mirrors_update(mirror_s* mirrors, const int progress, const unsigned ndownl
 
 char* mirror_loading(const char* fname, const unsigned tos){
 	char* buf = fname ? load_file(fname, 1) :  www_download_retry(MIRROR_LIST_URL, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, NULL, NULL);
-	if( !buf ) die("unable to load mirrorlist");
+	if( !buf ) die("unable to load mirrorlist from %s", MIRROR_LIST_URL);
 	buf = mem_nullterm(buf);
 	return buf;
 }
