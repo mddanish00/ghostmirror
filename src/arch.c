@@ -209,13 +209,13 @@ __private void* get_tar_zst(mirror_s* mirror, const char* repo, const unsigned t
     if( mirror->url[0] == '/' ){ // Handling for local file paths (e.g., /path/to/repo)
         // Assuming 'repo' is the direct name of the .db file, or part of path
         // This part might need review if local file structure is different from URL structure
-        __free char* url = str_printf("%s/%s.db", mirror->url, repo); 
+        __free char* url = str_printf("%s/%s.db.tar.zst", mirror->url, repo); 
         return load_file(url, 1);
     }
     else{
-        // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name>/<repo_name>.db
-        // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/cachyos.db
-        __free char* url = str_printf("%s/%s/%s/%s.db", mirror->url, mirror->arch, repo, repo);
+        // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name>/<repo_name>.db.tar.zst
+        // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/cachyos.db.tar.zst
+        __free char* url = str_printf("%s/%s/%s/%s.db.tar.zst", mirror->url, mirror->arch, repo, repo);
         void* ret = NULL;
         if( !mirror->wwwerror ){
             ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, &mirror->proxy, &mirror->retry);
@@ -252,22 +252,25 @@ __private void mirror_update(mirror_s* mirror, const unsigned tos){
 			return;
 		}
 	
-		__free void* tarbuf = gzip_decompress(tarzstd);
+		__free void* tarbuf = zstd_decompress(tarzstd);
 		if( !tarbuf ){
-			dbg_error("decompress zstd archive from mirror: %s", mirror->url);
+			dbg_error("decompress zstd archive failed for mirror: %s", mirror->url);
 			mirror->status = MIRROR_ERR;
 			switch( errno ){
-				case EBADMSG:
-					mirror->error  = ERROR_GZIP_DATA;
+				case EBADMSG: // ZSTD_error_data_error often results in EBADMSG
+					mirror->error  = ERROR_ZSTD_DATA;
 				break;
 				default:
-					mirror->error  = ERROR_GZIP;
+					mirror->error  = ERROR_ZSTD;
 				break;
 			}
 			return;
 		}
 		
 		if( !(mirror->repo[ir].db = generate_db(tarbuf)) ){
+			// ERROR_TAR_NOBLOCK, ERROR_TAR_BLOCKEND etc are presumably defined elsewhere
+			// and are relevant to tar extraction, not zstd decompression itself.
+			// This block seems correct as is for tar errors.
 			switch( errno ){
 				case ENOENT : mirror->error = ERROR_TAR_NOBLOCK; break;
 				case EBADF  : mirror->error = ERROR_TAR_BLOCKEND; break;  
