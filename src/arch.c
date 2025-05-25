@@ -34,7 +34,7 @@ __private unsigned SORTMODE[SORT_MAX];
 __private unsigned SORTCOUNT;
 
 
-char* REPO[2] = { "core", "extra" };
+char* REPO[1] = { "cachyos" };
 
 __private mirror_s* mirror_ctor(mirror_s* mirror, char* url, const char* arch, char* country){
 	memset(mirror, 0, sizeof(mirror_s));
@@ -211,7 +211,7 @@ __private void* get_tar_zst(mirror_s* mirror, const char* repo, const unsigned t
 		return load_file(url, 1);
 	}
 	else{
-		__free char* url = str_printf("%s/%s/os/%s/%s.db", mirror->url, repo, mirror->arch, repo);
+		__free char* url = str_printf("%s/%s/%s/%s.db", mirror->url, repo, mirror->arch, repo);
 		void* ret = NULL;
 		if( !mirror->wwwerror ){
 			ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, &mirror->proxy, &mirror->retry);
@@ -570,13 +570,15 @@ __private void mirror_speed(mirror_s* mirror, const char* arch, unsigned type){
 		pkgdesc_s  find;
 		strcpy(find.name, testname[i]);
 
-		pkgdesc_s* pk = mem_bsearch(mirror->repo[1].db, &find, pkgname_cmp);
+		// Assuming the test packages are in the first (and only) repository
+		pkgdesc_s* pk = mem_bsearch(mirror->repo[0].db, &find, pkgname_cmp);
 		if( !pk ){
 			die("unable to benchmark mirror, not find %s package", testname[i]);
 			return;
 		}
 
-		__free char* url = str_printf("%s/extra/os/%s/%s", mirror->url, arch, pk->filename);
+		// URL should use "cachyos" as the repository name
+		__free char* url = str_printf("%s/cachyos/%s/%s", mirror->url, arch, pk->filename);
 		unsigned retry = DOWNLOAD_RETRY;
 		delay_t  retrytime = DOWNLOAD_WAIT;
 		while( retry-->0 ){

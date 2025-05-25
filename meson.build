@@ -1,7 +1,7 @@
 ###########
 # project #
 ###########
-project('ghostmirror', 'c', version: '0.10.4')
+project('ghostmirror-catchyos', 'c', version: '0.10.4')
 cc = meson.get_compiler('c')
 localPath = meson.current_source_dir()
 
@@ -20,17 +20,21 @@ if get_option('eveloper')
     run_command('sed', '-i', '-r', '-e', 's/^' + meson.project_name() + '[ \\t]*v(.*)/' + meson.project_name() + ' v' + version['str'] + '/', './README.md', check: true)
     message('update PKGBUILD')
     run_command('sed', '-i', '-r', '-e', 's/^pkgver=\'([^\']+)\'/pkgver=\'' + version['str'] + '\'/', './distro/PKGBUILD', check: true)
+    # TODO: Update pkgname in ./distro/PKGBUILD from ghostmirror to ghostmirror-catchyos
+    # TODO: Update source in ./distro/PKGBUILD from ghostmirror::git+https://github.com/vbextreme/ghostmirror.git to ghostmirror-catchyos::git+https://github.com/vbextreme/ghostmirror.git
     message('generating MANPAGES')
     run_command('bash', './man/gen-manpages.sh', env: {'CURRENT_VERSION': version['str']}, check: true)
+    # TODO: rename man/ghostmirror.1 to man/ghostmirror-catchyos.1 and update man/gen-manpages.sh
     message('update GIT')
     run_command('git', 'commit', '-a', '-m', version['dsc'], check: true)
     run_command('git', 'tag', '-a', 'v' + version['str'], '-m', version['dsc'], check: true)
     run_command('git', 'push', '--follow-tags', check: true)
     message('update AUR')
-    run_command('cp', './distro/PKGBUILD', './distro/ghostmirror/PKGBUILD', check: true)
-    run_command('bash', '-c', 'makepkg -D ./distro --printsrcinfo > ./distro/ghostmirror/.SRCINFO', check: true)
-    run_command('git', '-C', './distro/ghostmirror', 'commit', '-a', '-m', version['dsc'], check: true)
-    run_command('git', '-C', './distro/ghostmirror', 'push', check: true)
+    # TODO: rename directory ./distro/ghostmirror to ./distro/ghostmirror-catchyos
+    run_command('cp', './distro/PKGBUILD', './distro/ghostmirror-catchyos/PKGBUILD', check: true)
+    run_command('bash', '-c', 'makepkg -D ./distro --printsrcinfo > ./distro/ghostmirror-catchyos/.SRCINFO', check: true)
+    run_command('git', '-C', './distro/ghostmirror-catchyos', 'commit', '-a', '-m', version['dsc'], check: true)
+    run_command('git', '-C', './distro/ghostmirror-catchyos', 'push', check: true)
   endif
 endif
 ###########
@@ -68,13 +72,13 @@ src += [ 'src/systemd.c' ]
 # man files #
 #############
 
-install_man('man/ghostmirror.1')
+install_man('man/ghostmirror-catchyos.1') # TODO: rename man/ghostmirror.1 to man/ghostmirror-catchyos.1
 
 #########################
 # bash completion files #
 #########################
 
-install_data('bash-completion/ghostmirror', install_dir: '/etc/bash_completion.d/')
+install_data('bash-completion/ghostmirror-catchyos', install_dir: '/etc/bash_completion.d/') # TODO: rename bash-completion/ghostmirror to bash-completion/ghostmirror-catchyos
 
 ##################
 # compiler flags #

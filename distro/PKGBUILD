@@ -1,8 +1,8 @@
 # Maintainer: Vbextreme <@>
 # Contributor: Vbextreme <@>
-prj='ghostmirror'
+prj='ghostmirror-catchyos'
 pkgname=($prj)
-pkgdesc='modern alternative to reflector, true check mirror status, mirror download speed and more.'
+pkgdesc='mirror ranking tool for CachyOS, checks status, speed, and more.'
 pkgver='0.10.4'
 pkgrel=1
 arch=('x86_64')
