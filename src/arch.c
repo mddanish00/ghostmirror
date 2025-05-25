@@ -215,7 +215,7 @@ __private void* get_tar_zst(mirror_s* mirror, const char* repo, const unsigned t
     else{
         // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name>/<repo_name>.db
         // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/cachyos.db
-        __free char* url = str_printf("%s%s/%s/%s.db", mirror->url, mirror->arch, repo, repo);
+        __free char* url = str_printf("%s/%s/%s/%s.db", mirror->url, mirror->arch, repo, repo);
         void* ret = NULL;
         if( !mirror->wwwerror ){
             ret = www_download_retry(url, 0, tos, DOWNLOAD_RETRY, DOWNLOAD_WAIT, &mirror->proxy, &mirror->retry);
@@ -586,7 +586,7 @@ __private void mirror_speed(mirror_s* mirror, const char* arch, unsigned type){
 
         // Construct URL: <mirror->url_with_trailing_slash><architecture>/<repo_name_dir>/<package_filename>
         // Example: https://geo-mirror.cachyos.org/x86_64/cachyos/yay-12.3.5-1-x86_64.pkg.tar.zst
-        __free char* url = str_printf("%s%s/%s/%s", mirror->url, arch, REPO[0], pk->filename);
+        __free char* url = str_printf("%s/%s/cachyos/%s", mirror->url, arch, pk->filename);
         unsigned retry = DOWNLOAD_RETRY;
         delay_t retrytime = DOWNLOAD_WAIT;
         
