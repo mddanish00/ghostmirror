@@ -19,6 +19,8 @@
 #define ERROR_TAR_BLOCKEND  0x05
 #define ERROR_TAR_NOBLOCK   0x06
 #define ERROR_TAR_KV_ASSIGN 0x07
+#define ERROR_ZSTD_DATA     0x08
+#define ERROR_ZSTD          0x09
 
 
 //TODO pacman mirrorlist is not a default path need to parse pacman config and get the include directory for each db

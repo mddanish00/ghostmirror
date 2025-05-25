@@ -22,6 +22,7 @@ typedef struct tar_s{
 }tar_s;
 
 void* gzip_decompress(void* data);
+void* zstd_decompress(void* data);
 
 void tar_mopen(tar_s* tar, void* data);
 tarent_s* tar_next(tar_s* tar);

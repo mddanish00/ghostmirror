@@ -163,6 +163,7 @@ libDeps  = [ cc.find_library('m', required : true) ] # math
 libDeps += [ dependency('libcurl', required: true) ]
 libDeps += [ dependency('zlib', required: true) ]
 libDeps += [ dependency('libsystemd', required: true) ]
+libDeps += [ dependency('libzstd', required: true) ]
 
 #########################
 # software dependencies #
