@@ -9,6 +9,12 @@ license = {text = "MIT"} # Assuming MIT based on typical open-source C projects,
 dependencies = [
     "click",
     "requests",
+    "rich",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
 ]
 
 [project.scripts]
