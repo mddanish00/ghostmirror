@@ -1,0 +1,22 @@
+[project]
+name = "ghostmirror"
+version = "0.10.4"  # Taken from the C project's README
+description = "A tool to rank pacman mirrors by comparing their databases with the local database, identifying out-of-sync mirrors, and providing detailed analysis."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"} # Assuming MIT based on typical open-source C projects, confirm if possible
+
+dependencies = [
+    "click",
+    "requests",
+]
+
+[project.scripts]
+ghostmirror = "ghostmirror.cli:main" # Placeholder, will be adjusted once CLI structure is defined
+
+[build-system]
+requires = ["uv>=0.1.17"]
+build-backend = "uvuv"
+
+[tool.uv]
+# Add any uv specific configurations if needed later
